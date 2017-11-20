@@ -1,0 +1,5 @@
+OS2017 labs
+
+PCproblem为生产者消费者问题
+
+gshell文件夹下是一个简易的shell程序，支持外部命令和内部命令cd,pwd,exit，支持简单的管道，输入输出重定向以及通过“&”指定后台执行。使用“make”编译，“make run”执行，“make clean”清空
