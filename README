@@ -3,3 +3,7 @@ OS2017 labs
 PCproblem为生产者消费者问题
 
 gshell文件夹下是一个简易的shell程序，支持外部命令和内部命令cd,pwd,exit，支持简单的管道，输入输出重定向以及通过“&”指定后台执行。使用“make”编译，“make run”执行，“make clean”清空
+
+kernelconsole/protectedkernelconsole文件夹中是一个bochs下的简易控制台（附样例截图），所做工作是将clone自老师的代码结合JOS代码，实现JOS下qemu中控制台效果。
+思路为仿照JOS在kern/init.c中引入printf和monitor的功能，根据编译时的报错添加用到的JOS中的.c或.h文件到inc或kern文件夹下，并更改Makefile编译引入的.c文件
+需要注意的是若引入的文件是lab2中的，最终bochs控制台只能显示有限行的输出，全部替换为lab1中的文件则避免了这一问题，猜测和显存缓冲区大小设置有关。
