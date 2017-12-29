@@ -159,6 +159,8 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	envs=(struct Env*)boot_alloc(NENV * sizeof(struct Env));
+	memset(envs,0,sizeof(struct Env)*NENV);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -182,11 +184,16 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
-	int perm = PTE_U | PTE_P; 
-	int i=0;  
-     	n = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);  
-    	for(i=0; i<n; i= i+PGSIZE)  
-        page_insert(kern_pgdir, pa2page(PADDR(pages) + i), (void *) (UPAGES +i), perm);  
+	////int perm = PTE_U | PTE_P; 
+	////int i=0;  
+     	////n = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);  
+    	////for(i=0; i<n; i= i+PGSIZE)  
+        ////page_insert(kern_pgdir, pa2page(PADDR(pages) + i), (void *) (UPAGES +i), perm);
+	boot_map_region(kern_pgdir,
+                    UPAGES,
+                    ROUNDUP((sizeof(struct PageInfo)*npages), PGSIZE),
+                    PADDR(pages),
+                    (PTE_U | PTE_P));  
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -195,6 +202,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+    boot_map_region(kern_pgdir,UENVS,ROUNDUP((sizeof(struct Env)*NENV), PGSIZE),PADDR(envs),(PTE_U|PTE_P));
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -207,9 +215,14 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	perm =0;  
-	perm = PTE_P |PTE_W;  
-	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, ROUNDUP(KSTKSIZE, PGSIZE), PADDR(bootstack), perm);
+	////perm =0;  
+	////perm = PTE_P |PTE_W;  
+	////boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, ROUNDUP(KSTKSIZE, PGSIZE), PADDR(bootstack), perm);
+	boot_map_region(kern_pgdir,
+                        KSTACKTOP-KSTKSIZE,
+                        ROUNDUP(KSTKSIZE, PGSIZE),
+                        PADDR(bootstack),
+                        PTE_W|PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -219,12 +232,17 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-	int size = ~0;  
-	size = size - KERNBASE +1;  
-	size = ROUNDUP(size, PGSIZE);  
-	perm = 0;  
-	perm = PTE_P | PTE_W;  
-	boot_map_region(kern_pgdir, KERNBASE, size, 0, perm ); 
+	////int size = ~0;  
+	////size = size - KERNBASE +1;  
+	////size = ROUNDUP(size, PGSIZE);  
+	////perm = 0;  
+	////perm = PTE_P | PTE_W;  
+	////boot_map_region(kern_pgdir, KERNBASE, size, 0, perm ); 
+	boot_map_region(kern_pgdir,
+                        KERNBASE,
+                        ROUNDUP(0xFFFFFFFF-KERNBASE, PGSIZE),
+                        0,
+                        PTE_W|PTE_P);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -595,6 +613,14 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	uintptr_t high = ROUNDUP((uintptr_t) va + len, PGSIZE);
+	for (uintptr_t low = (uintptr_t) va; low < high; low = ROUNDUP(low + 1, PGSIZE)) {
+    	pte_t *pte = pgdir_walk(env->env_pgdir, (void *) low, false);
+    	if (!pte || (~(*pte) & perm) || low >= ULIM) {
+        	user_mem_check_addr = low;
+        	return -E_FAULT;
+    	}
+	}
 
 	return 0;
 }
